@@ -6,7 +6,9 @@ import {
     CheckCircle2,
     Check,
     Clock4,
-    UserPlus
+    UserPlus,
+    X,
+    Settings
 } from 'lucide-react';
 import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -20,6 +22,16 @@ interface AvisosModuleProps {
 const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
     const [pendingUsers, setPendingUsers] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+    const [showSettings, setShowSettings] = useState(false);
+    const [alertSettings, setAlertSettings] = useState(() => {
+        const saved = localStorage.getItem('proneo_alert_settings_mobile');
+        return saved ? JSON.parse(saved) : {
+            approvals: true,
+            birthdays: true,
+            expirations: true,
+            clauses: true
+        };
+    });
     const [completedAlerts, setCompletedAlerts] = useState<string[]>(() => {
         const saved = localStorage.getItem('proneo_completed_alerts_mobile');
         return saved ? JSON.parse(saved) : [];
@@ -28,6 +40,10 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
         const saved = localStorage.getItem('proneo_snoozed_alerts_mobile');
         return saved ? JSON.parse(saved) : {};
     });
+
+    useEffect(() => {
+        localStorage.setItem('proneo_alert_settings_mobile', JSON.stringify(alertSettings));
+    }, [alertSettings]);
 
     useEffect(() => {
         localStorage.setItem('proneo_completed_alerts_mobile', JSON.stringify(completedAlerts));
@@ -172,7 +188,13 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
         }
     });
 
-    // Filtrado
+    // Filtros por Ajustes
+    if (!alertSettings.approvals) alerts = alerts.filter(a => a.type !== 'user_approval');
+    if (!alertSettings.birthdays) alerts = alerts.filter(a => a.type !== 'birthday');
+    if (!alertSettings.expirations) alerts = alerts.filter(a => a.type !== 'agency_end' && a.id.includes('agency-end'));
+    if (!alertSettings.clauses) alerts = alerts.filter(a => a.type !== 'clause' && a.id.includes('clause'));
+
+    // Filtrado de completados y silenciados
     alerts = alerts.filter(a => !completedAlerts.includes(a.id));
     alerts = alerts.filter(a => {
         const snoozeUntil = snoozedAlerts[a.id];
@@ -191,17 +213,59 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500 pb-20">
-            <header>
-                <div className="flex items-center gap-3">
-                    <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Avisos</h2>
-                    {alerts.length > 0 && (
-                        <div className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg">
-                            {alerts.length}
-                        </div>
-                    )}
+            <header className="flex justify-between items-start">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Avisos</h2>
+                        {alerts.length > 0 && (
+                            <div className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg">
+                                {alerts.length}
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Notificaciones Críticas</p>
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Notificaciones Críticas</p>
+                <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    className={`p-3 rounded-2xl transition-all ${showSettings ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}
+                >
+                    <Settings className="w-5 h-5" />
+                </button>
             </header>
+
+            {showSettings && (
+                <div className="bg-slate-900 rounded-[32px] p-8 text-white space-y-6 animate-in slide-in-from-top duration-300">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-black uppercase text-xs tracking-[0.2em]">Configurar Alertas</h3>
+                        <button onClick={() => setShowSettings(false)} className="text-white/40 hover:text-white">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {[
+                            { id: 'approvals', label: 'Solicitudes de Acceso', icon: UserPlus },
+                            { id: 'birthdays', label: 'Cumpleaños', icon: Cake },
+                            { id: 'expirations', label: 'Vencimientos Agencia', icon: Clock4 },
+                            { id: 'clauses', label: 'Cláusulas Críticas', icon: AlertTriangle },
+                        ].map((pref) => (
+                            <button
+                                key={pref.id}
+                                onClick={() => setAlertSettings((prev: any) => ({ ...prev, [pref.id]: !prev[pref.id] }))}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${alertSettings[pref.id] ? 'bg-white/10 border-white/20' : 'border-white/5 opacity-40'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <pref.icon className="w-4 h-4" />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest">{pref.label}</span>
+                                </div>
+                                <div className={`w-10 h-6 rounded-full relative transition-colors ${alertSettings[pref.id] ? 'bg-proneo-green' : 'bg-white/10'}`}>
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alertSettings[pref.id] ? 'right-1' : 'left-1'}`} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {['Todos', 'Fútbol', 'F. Sala', 'Femenino', 'Entrenadores'].map(cat => (

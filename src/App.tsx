@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from './firebase/config';
+const APP_VERSION = 'v2.11.5';
+import { auth, db, messaging } from './firebase/config';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
+import { getToken } from 'firebase/messaging';
 import {
   getDoc,
   doc,
   collection,
   query,
+  where,
   onSnapshot,
   limit,
   updateDoc
@@ -382,7 +385,7 @@ const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSp
           className={`flex items-center gap-2 text-white font-black uppercase text-[10px] tracking-widest px-6 py-2.5 rounded-xl shadow-lg active:scale-95 transition-all ${isMarketReport ? 'bg-emerald-600 shadow-emerald-900/40' : 'bg-blue-600 shadow-blue-900/40'}`}
         >
           <ClipboardList className="w-4 h-4" />
-          Imprimir Reporte
+          Guardar PDF / Enviar
         </button>
       </div>
 
@@ -488,14 +491,31 @@ const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSp
 
       <style>{`
         @media print {
+          /* Reset total para impresión */
+          body { visibility: hidden !important; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print { display: none !important; }
-          body { background: white !important; margin: 0; }
-          .max-w-4xl { max-width: 100% !important; box-shadow: none !important; }
-          .bg-slate-50 { background: white !important; }
-          header { -webkit-print-color-adjust: exact !important; }
-          .bg-gradient-to-br { -webkit-print-color-adjust: exact !important; }
-          .bg-slate-900 { -webkit-print-color-adjust: exact !important; }
-          .text-emerald-400, .text-blue-400 { -webkit-print-color-adjust: exact !important; }
+          
+          /* Solo mostramos el contenido del reporte */
+          .fixed.inset-0.bg-slate-50 { visibility: visible !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; display: block !important; }
+          .fixed.inset-0.bg-slate-50 * { visibility: visible !important; }
+          
+          /* Restaurar colores y fondos */
+          header, .bg-gradient-to-br, .bg-slate-900, .bg-emerald-600, .bg-blue-600, .bg-proneo-green, .bg-white { 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          
+          .text-emerald-400, .text-blue-400, .text-proneo-green, .text-white { 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+
+          .max-w-4xl { max-width: 100% !important; width: 100% !important; box-shadow: none !important; margin: 0 !important; border: none !important; background: white !important; }
+          
+          /* Evitar cortes feos */
+          .grid > div { break-inside: avoid; page-break-inside: avoid; margin-bottom: 1rem; }
+          
+          @page { size: A4; margin: 10mm; }
         }
       `}</style>
     </div>
@@ -507,7 +527,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [players, setPlayers] = useState<Player[]>([]);
-  const [scouts, setScouts] = useState<any[]>([]);
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -517,6 +536,8 @@ function App() {
   const [sportFilter, setSportFilter] = useState<'all' | 'Fútbol' | 'F. Sala' | 'Femenino' | 'Entrenadores'>('all');
   const [reportSportFilter, setReportSportFilter] = useState<'all' | 'Fútbol' | 'F. Sala' | 'Femenino' | 'Entrenadores'>('all');
   const [dossierTitle, setDossierTitle] = useState('Dossier Scouting');
+  const [alertCount, setAlertCount] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -542,12 +563,76 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    const q = collection(db, 'scouting');
+    if (!user || !messaging || typeof window === 'undefined' || !('Notification' in window)) return;
+
+    const requestPermission = async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          // VAPID Key para producción integrada
+          const token = await getToken(messaging!, {
+            vapidKey: 'BOUzsUo5hx3dtWfTBxMbzStxKtrJRcubmy4jbrDKaHow9qwj1RFzepvXyZ5HGIvvy0YOVLh4QDcX92DnhQPCi_k'
+          });
+
+          if (token) {
+            await updateDoc(doc(db, 'users', user.email?.toLowerCase() || ''), {
+              fcmToken: token,
+              lastTokenUpdate: new Date().toISOString()
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error en notificaciones push:', error);
+      }
+    };
+
+    requestPermission();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'director' && user.role !== 'admin')) {
+      setPendingApprovals(0);
+      return;
+    }
+    const q = query(collection(db, 'users'), where('approved', '==', false));
     return onSnapshot(q, (snapshot) => {
-      setScouts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setPendingApprovals(snapshot.size);
     });
   }, [user]);
+
+  useEffect(() => {
+    // Cálculo rápido de alertas totales para el badge (Aproximado)
+    let count = pendingApprovals;
+
+    // Cumpleaños de hoy
+    const today = new Date();
+    const bdays = players.filter(p => {
+      if (!p.birthDate) return false;
+      const [d, m] = p.birthDate.split('/');
+      return Number(d) === today.getDate() && Number(m) === (today.getMonth() + 1);
+    }).length;
+
+    setAlertCount(count + bdays);
+  }, [pendingApprovals, players]);
+
+  const handleTestPush = async () => {
+    if (!('Notification' in window)) {
+      alert('Tu navegador no soporta notificaciones.');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      new Notification('ProneoMobile 🚀', {
+        body: 'Esta es una notificación de prueba. ¡El sistema de avisos está activo!',
+        icon: '/logo-icon.png'
+      });
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        handleTestPush();
+      }
+    }
+  };
 
   const handleEditPlayer = (player: Player) => {
     setEditingPlayer(player);
@@ -728,7 +813,51 @@ function App() {
           </div>
         )}
         {activeTab === 'notifications' && <AvisosModule players={players} userRole={user?.role || 'scout'} />}
-        {activeTab === 'profile' && <ProfileModule user={user} />}
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            <ProfileModule
+              user={{
+                email: user.email,
+                displayName: user.displayName || user.email?.split('@')[0],
+                photoURL: user.photoURL,
+                role: user.role
+              }}
+            />
+            <div className="px-6 pb-32 space-y-4">
+              <button
+                onClick={handleTestPush}
+                className="w-full bg-blue-50 text-blue-600 p-6 rounded-[32px] border border-blue-100 flex items-center justify-center gap-3 font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
+              >
+                <Bell className="w-5 h-5" />
+                Probar Notificaciones
+              </button>
+
+              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Información Sistema</p>
+                  <p className="text-sm font-bold text-slate-600 tracking-tight">Versión {APP_VERSION}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm('¿Quieres reiniciar la aplicación para aplicar actualizaciones?')) {
+                      window.location.reload();
+                    }
+                  }}
+                  className="bg-slate-50 text-slate-400 p-4 rounded-2xl hover:bg-slate-100 transition-all font-bold text-[10px] uppercase tracking-widest"
+                >
+                  Reiniciar
+                </button>
+              </div>
+              <button
+                onClick={() => auth.signOut()}
+                className="w-full bg-red-50 text-red-500 p-6 rounded-[32px] flex items-center justify-center gap-3 font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                <LogOut className="w-5 h-5" />
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        )}
         {activeTab === 'settings' && <SystemSettings />}
       </main>
 
@@ -784,10 +913,15 @@ function App() {
 
         <button
           onClick={() => setActiveTab('notifications')}
-          className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'notifications' ? 'text-red-500 scale-110' : 'text-slate-500 opacity-60'}`}
+          className={`flex flex-col items-center gap-2 transition-all duration-300 relative ${activeTab === 'notifications' ? 'text-red-500 scale-110' : 'text-slate-500 opacity-60'}`}
         >
           <Bell className="w-7 h-7" />
           <span className="text-[10px] font-black uppercase tracking-widest text-center">Avisos</span>
+          {alertCount > 0 && (
+            <div className="absolute -top-1 right-2 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-bounce">
+              {alertCount}
+            </div>
+          )}
           {activeTab === 'notifications' && <div className="w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" />}
         </button>
 
