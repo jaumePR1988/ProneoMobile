@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "proneomanager"
+  },
+  "targets": {
+    "proneomanager": {
+      "hosting": {
+        "mobile": [
+          "proneomobile-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
