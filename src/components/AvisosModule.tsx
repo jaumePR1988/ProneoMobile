@@ -25,7 +25,7 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [alertSettings, setAlertSettings] = useState(() => {
         const saved = localStorage.getItem('proneo_alert_settings_mobile');
-        return saved ? JSON.parse(saved) : {
+        return saved ? { ...JSON.parse(saved), expirations: true, clauses: true } : {
             approvals: true,
             birthdays: true,
             expirations: true,
@@ -244,19 +244,22 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
 
                     <div className="grid grid-cols-1 gap-4">
                         {[
-                            { id: 'approvals', label: 'Solicitudes de Acceso', icon: UserPlus },
-                            { id: 'birthdays', label: 'Cumpleaños', icon: Cake },
-                            { id: 'expirations', label: 'Vencimientos Agencia', icon: Clock4 },
-                            { id: 'clauses', label: 'Cláusulas Críticas', icon: AlertTriangle },
+                            { id: 'approvals', label: 'Solicitudes de Acceso', icon: UserPlus, mandatory: false },
+                            { id: 'birthdays', label: 'Cumpleaños', icon: Cake, mandatory: false },
+                            { id: 'expirations', label: 'Vencimientos Agencia', icon: Clock4, mandatory: true },
+                            { id: 'clauses', label: 'Cláusulas Críticas', icon: AlertTriangle, mandatory: true },
                         ].map((pref) => (
                             <button
                                 key={pref.id}
-                                onClick={() => setAlertSettings((prev: any) => ({ ...prev, [pref.id]: !prev[pref.id] }))}
-                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${alertSettings[pref.id] ? 'bg-white/10 border-white/20' : 'border-white/5 opacity-40'}`}
+                                onClick={() => !pref.mandatory && setAlertSettings((prev: any) => ({ ...prev, [pref.id]: !prev[pref.id] }))}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${alertSettings[pref.id] ? 'bg-white/10 border-white/20' : 'border-white/5 opacity-40'} ${pref.mandatory ? 'cursor-default' : 'cursor-pointer'}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <pref.icon className="w-4 h-4" />
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">{pref.label}</span>
+                                    <pref.icon className="w-4 h-4 text-proneo-green" />
+                                    <div>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest block">{pref.label}</span>
+                                        {pref.mandatory && <span className="text-[8px] font-black text-proneo-green uppercase tracking-tighter">Obligatorio</span>}
+                                    </div>
                                 </div>
                                 <div className={`w-10 h-6 rounded-full relative transition-colors ${alertSettings[pref.id] ? 'bg-proneo-green' : 'bg-white/10'}`}>
                                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alertSettings[pref.id] ? 'right-1' : 'left-1'}`} />
