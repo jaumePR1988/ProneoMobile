@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-const APP_VERSION = 'v2.11.5';
+const APP_VERSION = 'v2.13.0';
 import { auth, db, messaging } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getToken } from 'firebase/messaging';
@@ -441,15 +441,23 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.email?.toLowerCase() || ''));
-        if (userDoc.exists()) {
-          setUser({ ...firebaseUser, role: userDoc.data().role });
+      try {
+        if (firebaseUser) {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.email?.toLowerCase() || ''));
+          if (userDoc.exists()) {
+            setUser({ ...firebaseUser, role: userDoc.data().role });
+          } else {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch (e) {
+        console.error("Auth state error:", e);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -563,8 +571,8 @@ function App() {
           <img src="/logo-icon.png" alt="Logo" className="w-10 h-10" />
           <div className="flex flex-col">
             <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase leading-none">
-              {appBranding.title.split(' ')[0]}
-              <span style={{ color: appBranding.color }}> {appBranding.title.split(' ')[1] || ''}</span>
+              {(appBranding.title || '').split(' ')[0]}
+              <span style={{ color: appBranding.color }}> {(appBranding.title || '').split(' ')[1] || ''}</span>
             </h1>
             <span className="text-[9px] font-black text-slate-300 tracking-[0.2em] uppercase mt-1">Professional Registry</span>
           </div>

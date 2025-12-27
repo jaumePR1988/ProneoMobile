@@ -25,21 +25,30 @@ export const storage = getStorage(app);
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 // Firebase Pro Services
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
-export const remoteConfig = typeof window !== 'undefined' ? getRemoteConfig(app) : null;
+export const analytics = typeof window !== 'undefined' ? (() => {
+    try { return getAnalytics(app); } catch (e) { console.warn("Analytics blocked or failed:", e); return null; }
+})() : null;
+
+export const remoteConfig = typeof window !== 'undefined' ? (() => {
+    try { return getRemoteConfig(app); } catch (e) { console.warn("Remote Config blocked or failed:", e); return null; }
+})() : null;
 
 if (remoteConfig) {
-    remoteConfig.settings.minimumFetchIntervalMillis = 3600000; // 1 hora
-    remoteConfig.defaultConfig = {
-        "theme_color": "#74b72e",
-        "app_title": "PRONEO MOBILE",
-        "maintenance_mode": false,
-        "campaign_banner_show": false,
-        "campaign_banner_text": "¡Feliz Navidad! 🎄 Descubre las nuevas oportunidades.",
-        "campaign_banner_color": "#e11d48", // Rojo navidad por defecto
-        "campaign_theme": "default"
-    };
-    fetchAndActivate(remoteConfig).catch(err => console.error("Remote Config Error:", err));
+    try {
+        remoteConfig.settings.minimumFetchIntervalMillis = 3600000; // 1 hora
+        remoteConfig.defaultConfig = {
+            "theme_color": "#74b72e",
+            "app_title": "PRONEO MOBILE",
+            "maintenance_mode": false,
+            "campaign_banner_show": false,
+            "campaign_banner_text": "¡Feliz Navidad! 🎄 Descubre las nuevas oportunidades.",
+            "campaign_banner_color": "#e11d48", // Rojo navidad por defecto
+            "campaign_theme": "default"
+        };
+        fetchAndActivate(remoteConfig).catch(err => console.error("Remote Config Fetch Error:", err));
+    } catch (e) {
+        console.error("Remote Config Setup Error:", e);
+    }
 }
 
 export { logEvent, getValue };
