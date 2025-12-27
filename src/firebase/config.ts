@@ -33,7 +33,11 @@ if (remoteConfig) {
     remoteConfig.defaultConfig = {
         "theme_color": "#74b72e",
         "app_title": "PRONEO MOBILE",
-        "maintenance_mode": false
+        "maintenance_mode": false,
+        "campaign_banner_show": false,
+        "campaign_banner_text": "¡Feliz Navidad! 🎄 Descubre las nuevas oportunidades.",
+        "campaign_banner_color": "#e11d48", // Rojo navidad por defecto
+        "campaign_theme": "default"
     };
     fetchAndActivate(remoteConfig).catch(err => console.error("Remote Config Error:", err));
 }

@@ -15,6 +15,10 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import {
+  Users,
+  Search,
+  LayoutDashboard,
+  LogOut,
   MapPin,
   Edit2,
   Settings,
@@ -411,14 +415,26 @@ function App() {
   // Remote Config State
   const [appBranding, setAppBranding] = useState({
     title: 'PRONEO MOBILE',
-    color: '#74b72e'
+    color: '#74b72e',
+    campaign: {
+      show: false,
+      text: '',
+      color: '#e11d48',
+      theme: 'default'
+    }
   });
 
   useEffect(() => {
     if (remoteConfig) {
       setAppBranding({
         title: getValue(remoteConfig, 'app_title').asString(),
-        color: getValue(remoteConfig, 'theme_color').asString()
+        color: getValue(remoteConfig, 'theme_color').asString(),
+        campaign: {
+          show: getValue(remoteConfig, 'campaign_banner_show').asBoolean(),
+          text: getValue(remoteConfig, 'campaign_banner_text').asString(),
+          color: getValue(remoteConfig, 'campaign_banner_color').asString(),
+          theme: getValue(remoteConfig, 'campaign_theme').asString()
+        }
       });
     }
   }, []);
@@ -565,6 +581,7 @@ function App() {
               canteraCount: players.filter(p => !p.isScouting).length,
               scoutingCount: players.filter(p => p.isScouting).length
             }}
+            campaign={appBranding.campaign}
             onAddPlayer={() => {
               setIsScoutingMode(false);
               setShowPlayerForm(true);

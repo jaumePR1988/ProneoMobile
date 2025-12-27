@@ -1,10 +1,37 @@
-import React from 'react';
-import { Users, Activity, PlusCircle, Target as TargetIcon, ArrowRight } from 'lucide-react';
+import { Users, Activity, PlusCircle, Target as TargetIcon, ArrowRight, Gift, Zap, BellRing, Sparkles } from 'lucide-react';
 
-const Dashboard = ({ stats, onAddPlayer, onAddScout }: { stats: any, onAddPlayer: () => void, onAddScout: () => void }) => (
+const Dashboard = ({ stats, onAddPlayer, onAddScout, campaign }: {
+    stats: any,
+    onAddPlayer: () => void,
+    onAddScout: () => void,
+    campaign?: { show: boolean, text: string, color: string, theme: string }
+}) => (
     <div className="p-6 space-y-8 animate-in mt-4 fade-in slide-in-from-bottom-4 duration-700">
+        {/* Banner de Campaña Dinámico */}
+        {campaign?.show && (
+            <div
+                className="p-5 rounded-[28px] text-white flex items-center gap-4 relative overflow-hidden animate-in zoom-in duration-500 shadow-lg"
+                style={{ backgroundColor: campaign.color }}
+            >
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+                    {campaign.theme === 'christmas' ? <Gift className="w-6 h-6" /> :
+                        campaign.theme === 'blackfriday' ? <Zap className="w-6 h-6 text-yellow-300" /> :
+                            <BellRing className="w-6 h-6" />}
+                </div>
+                <div className="flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Aviso Especial</p>
+                    <p className="font-bold text-sm leading-tight">{campaign.text}</p>
+                </div>
+                {campaign.theme === 'christmas' && <Sparkles className="absolute -right-2 -top-2 w-12 h-12 opacity-20 rotate-12" />}
+            </div>
+        )}
+
         <header className="flex flex-col gap-1">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-proneo-green">Panel de Control</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-proneo-green">
+                {campaign?.theme === 'christmas' ? '🌟 Temporada de Navidad' :
+                    campaign?.theme === 'blackfriday' ? '🔥 Ofertas Black Friday' :
+                        'Panel de Control'}
+            </p>
             <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Inicio</h2>
         </header>
 
@@ -32,7 +59,7 @@ const Dashboard = ({ stats, onAddPlayer, onAddScout }: { stats: any, onAddPlayer
         <div className="space-y-4">
             <button
                 onClick={onAddPlayer}
-                className="w-full bg-slate-900 text-white p-6 rounded-[32px] flex items-center justify-between shadow-2xl active:scale-[0.98] transition-all"
+                className={`w-full text-white p-6 rounded-[32px] flex items-center justify-between shadow-2xl active:scale-[0.98] transition-all ${campaign?.theme === 'blackfriday' ? 'bg-orange-600' : 'bg-slate-900'}`}
             >
                 <div className="text-left flex items-center gap-5">
                     <div className="w-14 h-14 bg-white/10 rounded-3xl flex items-center justify-center">
