@@ -8,7 +8,8 @@ import {
     Clock4,
     UserPlus,
     X,
-    Settings
+    Settings,
+    Lock
 } from 'lucide-react';
 import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -252,16 +253,21 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
                             <button
                                 key={pref.id}
                                 onClick={() => !pref.mandatory && setAlertSettings((prev: any) => ({ ...prev, [pref.id]: !prev[pref.id] }))}
-                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${alertSettings[pref.id] ? 'bg-white/10 border-white/20' : 'border-white/5 opacity-40'} ${pref.mandatory ? 'cursor-default' : 'cursor-pointer'}`}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${pref.mandatory ? 'bg-amber-500/10 border-amber-500/30' : (alertSettings[pref.id] ? 'bg-white/10 border-white/20' : 'border-white/5 opacity-40')} ${pref.mandatory ? 'cursor-default' : 'cursor-pointer'}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <pref.icon className="w-4 h-4 text-proneo-green" />
+                                    <pref.icon className={`w-4 h-4 ${pref.mandatory ? 'text-amber-500' : 'text-proneo-green'}`} />
                                     <div>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest block">{pref.label}</span>
-                                        {pref.mandatory && <span className="text-[8px] font-black text-proneo-green uppercase tracking-tighter">Obligatorio</span>}
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest block ${pref.mandatory ? 'text-amber-200' : 'text-white'}`}>{pref.label}</span>
+                                        {pref.mandatory && (
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                                <Lock className="w-2.5 h-2.5 text-amber-500" />
+                                                <span className="text-[8px] font-black text-amber-500 uppercase tracking-tighter">Obligatorio por seguridad</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className={`w-10 h-6 rounded-full relative transition-colors ${alertSettings[pref.id] ? 'bg-proneo-green' : 'bg-white/10'}`}>
+                                <div className={`w-10 h-6 rounded-full relative transition-colors ${alertSettings[pref.id] ? (pref.mandatory ? 'bg-amber-500' : 'bg-proneo-green') : 'bg-white/10'}`}>
                                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alertSettings[pref.id] ? 'right-1' : 'left-1'}`} />
                                 </div>
                             </button>
