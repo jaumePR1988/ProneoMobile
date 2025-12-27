@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 const APP_VERSION = 'v2.11.5';
 import { auth, db, messaging } from './firebase/config';
-import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { getToken } from 'firebase/messaging';
+import { analytics, logEvent, remoteConfig, getValue } from './firebase/config';
 import {
   getDoc,
   doc,
@@ -14,13 +15,6 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import {
-  Users,
-  Search,
-  LayoutDashboard,
-  LogOut,
-  PlusCircle,
-  Activity,
-  ArrowRight,
   MapPin,
   Edit2,
   Settings,
@@ -40,145 +34,12 @@ import PlayerForm from './components/PlayerForm';
 import type { Player } from './types/player';
 import ProfileModule from './components/ProfileModule';
 import AvisosModule from './components/AvisosModule';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
 
 // --- COMPONENTES UI CORPORATIVOS v1.4.0 ---
 
-const Login = ({ onLoginSuccess }: { onLoginSuccess: (user: any) => void }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userDoc = await getDoc(doc(db, 'users', email.toLowerCase()));
-      if (userDoc.exists()) {
-        onLoginSuccess({ ...userCredential.user, role: userDoc.data().role });
-      } else {
-        setError('Usuario no encontrado en la base de datos');
-      }
-    } catch (err: any) {
-      setError('Credenciales incorrectas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-700">
-        <div className="space-y-4">
-          <div className="w-20 h-20 bg-proneo-green/10 rounded-[32px] flex items-center justify-center mx-auto shadow-inner">
-            <img src="/logo-icon.png" alt="Logo" className="w-12 h-12" />
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tighter uppercase text-slate-900">PRONEO<span className="text-proneo-green"> MOBILE</span></h1>
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Professional Agency Management</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4 bg-slate-50 p-8 rounded-[40px] border border-slate-100">
-          <div className="space-y-2 text-left">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-4">Identificación</p>
-            <input
-              type="email"
-              placeholder="Email corporativo"
-              className="w-full p-5 bg-white rounded-3xl border-2 border-slate-100 outline-none focus:border-proneo-green font-bold text-slate-900 transition-all placeholder:text-slate-200"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2 text-left">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-4">Código de seguridad</p>
-            <input
-              type="password"
-              placeholder="Contraseña"
-              className="w-full p-5 bg-white rounded-3xl border-2 border-slate-100 outline-none focus:border-proneo-green font-bold text-slate-900 transition-all placeholder:text-slate-200"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          {error && <p className="text-red-500 text-[10px] font-black uppercase tracking-widest bg-red-50 p-4 rounded-2xl border border-red-100">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-slate-900 text-white p-6 rounded-3xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50 mt-4"
-          >
-            {loading ? 'Accediendo...' : 'Iniciar Sesión'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const Dashboard = ({ stats, onAddPlayer, onAddScout }: { stats: any, onAddPlayer: () => void, onAddScout: () => void }) => (
-  <div className="p-6 space-y-8 animate-in mt-4 fade-in slide-in-from-bottom-4 duration-700">
-    <header className="flex flex-col gap-1">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-proneo-green">Panel de Control</p>
-      <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Inicio</h2>
-    </header>
-
-    <div className="grid grid-cols-2 gap-4">
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
-        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-          <Users className="text-blue-500 w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Cantera</p>
-          <p className="text-3xl font-black text-slate-900">{stats.canteraCount}</p>
-        </div>
-      </div>
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
-        <div className="w-12 h-12 bg-proneo-green/5 rounded-2xl flex items-center justify-center">
-          <Activity className="text-proneo-green w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Jugadores/as Scouting</p>
-          <p className="text-3xl font-black text-slate-900">{stats.scoutingCount}</p>
-        </div>
-      </div>
-    </div>
-
-    <div className="space-y-4">
-      <button
-        onClick={onAddPlayer}
-        className="w-full bg-slate-900 text-white p-6 rounded-[32px] flex items-center justify-between shadow-2xl active:scale-[0.98] transition-all"
-      >
-        <div className="text-left flex items-center gap-5">
-          <div className="w-14 h-14 bg-white/10 rounded-3xl flex items-center justify-center">
-            <PlusCircle className="w-8 h-8 text-proneo-green" />
-          </div>
-          <div>
-            <p className="font-black text-lg uppercase tracking-tight">Nuevo Jugador/a</p>
-            <p className="font-bold text-slate-400 text-[9px] uppercase tracking-widest opacity-60">Sincronización en tiempo real</p>
-          </div>
-        </div>
-        <ArrowRight className="w-6 h-6 text-slate-600" />
-      </button>
-
-      <button
-        onClick={onAddScout}
-        className="w-full bg-blue-600 text-white p-6 rounded-[32px] flex items-center justify-between shadow-2xl active:scale-[0.98] transition-all"
-      >
-        <div className="text-left flex items-center gap-5">
-          <div className="w-14 h-14 bg-white/10 rounded-3xl flex items-center justify-center">
-            <TargetIcon className="w-8 h-8 text-white" />
-          </div>
-          <div>
-            <p className="font-black text-lg uppercase tracking-tight">Nuevo Objetivo</p>
-            <p className="font-bold text-blue-100 text-[9px] uppercase tracking-widest opacity-60">Seguimiento y Scouting</p>
-          </div>
-        </div>
-        <ArrowRight className="w-6 h-6 text-blue-300" />
-      </button>
-    </div>
-  </div>
-);
+// --- RESTRICCIÓN DE COMPONENTES EXTERNOS ---
 
 const PlayerCard = ({ player, onEdit }: { player: Player, onEdit: (p: Player) => void }) => (
   <div
@@ -381,7 +242,15 @@ const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSp
           Cerrar
         </button>
         <button
-          onClick={() => window.print()}
+          onClick={() => {
+            if (analytics) {
+              logEvent(analytics, 'generate_report', {
+                report_type: title,
+                sport: filterSport
+              });
+            }
+            window.print();
+          }}
           className={`flex items-center gap-2 text-white font-black uppercase text-[10px] tracking-widest px-6 py-2.5 rounded-xl shadow-lg active:scale-95 transition-all ${isMarketReport ? 'bg-emerald-600 shadow-emerald-900/40' : 'bg-blue-600 shadow-blue-900/40'}`}
         >
           <ClipboardList className="w-4 h-4" />
@@ -539,6 +408,21 @@ function App() {
   const [alertCount, setAlertCount] = useState(0);
   const [pendingApprovals, setPendingApprovals] = useState(0);
 
+  // Remote Config State
+  const [appBranding, setAppBranding] = useState({
+    title: 'PRONEO MOBILE',
+    color: '#74b72e'
+  });
+
+  useEffect(() => {
+    if (remoteConfig) {
+      setAppBranding({
+        title: getValue(remoteConfig, 'app_title').asString(),
+        color: getValue(remoteConfig, 'theme_color').asString()
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -662,7 +546,10 @@ function App() {
         <div className="flex items-center gap-4">
           <img src="/logo-icon.png" alt="Logo" className="w-10 h-10" />
           <div className="flex flex-col">
-            <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase leading-none">PRONEO<span className="text-proneo-green"> MOBILE</span></h1>
+            <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase leading-none">
+              {appBranding.title.split(' ')[0]}
+              <span style={{ color: appBranding.color }}> {appBranding.title.split(' ')[1] || ''}</span>
+            </h1>
             <span className="text-[9px] font-black text-slate-300 tracking-[0.2em] uppercase mt-1">Professional Registry</span>
           </div>
         </div>
