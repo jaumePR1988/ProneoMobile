@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { X, ClipboardList, Camera, Shield, User, Calendar } from 'lucide-react';
 import type { Player } from '../types/player';
 import { analytics, logEvent } from '../firebase/config';
@@ -20,18 +21,20 @@ const calculateAge = (birthDate: string) => {
 };
 
 const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSport = "all" }: DossierPreviewProps) => {
-    const scoutingPlayers = players.filter(p => {
-        const isScouting = p.isScouting;
-        const matchesSport = filterSport === "all" || p.category === filterSport;
+    const scoutingPlayers = useMemo(() => {
+        return players.filter(p => {
+            const isScouting = p.isScouting;
+            const matchesSport = filterSport === "all" || p.category === filterSport;
 
-        if (title === 'Dossier Oportunidades Mercado' || title === 'Oportunidades Mercado') {
-            const contractEnd = p.scouting?.contractEnd || '';
-            const isExpiring = contractEnd.includes('2025') || contractEnd.includes('2026');
-            return isScouting && matchesSport && isExpiring;
-        }
+            if (title === 'Dossier Oportunidades Mercado' || title === 'Oportunidades Mercado') {
+                const contractEnd = p.scouting?.contractEnd || '';
+                const isExpiring = contractEnd.includes('2025') || contractEnd.includes('2026');
+                return isScouting && matchesSport && isExpiring;
+            }
 
-        return isScouting && matchesSport;
-    });
+            return isScouting && matchesSport;
+        });
+    }, [players, title, filterSport]);
 
     const isMarketReport = title.includes('Oportunidades');
 
