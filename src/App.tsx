@@ -44,12 +44,12 @@ import DossierPreview from './components/DossierPreview';
 function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'players' | 'scouting' | 'reports' | 'notifications' | 'profile' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'players' | 'reports' | 'notifications' | 'profile' | 'settings'>('home');
   const [players, setPlayers] = useState<Player[]>([]);
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isScoutingView, setIsScoutingView] = useState(false);
+  const [isScoutingView, setIsScoutingView] = useState(false); // Toggle state: false = Cantera, true = Scouting
   const [isScoutingMode, setIsScoutingMode] = useState(false);
   const [showDossier, setShowDossier] = useState(false);
   const [sportFilter, setSportFilter] = useState<'all' | 'Fútbol' | 'F. Sala' | 'Femenino' | 'Entrenadores'>('all');
@@ -250,20 +250,40 @@ function App() {
           <div className="p-6 space-y-6 animate-in fade-in duration-500 text-center">
             <header className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Cantera</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Jugadores Representados</p>
+                <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">
+                  {isScoutingView ? <span className="text-blue-600">Scouting</span> : 'Cantera'}
+                </h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                  {isScoutingView ? 'Objetivos de Mercado' : 'Jugadores Representados'}
+                </p>
               </div>
             </header>
 
             <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+              <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${isScoutingView ? 'text-blue-300' : 'text-slate-300'}`} />
               <input
                 type="text"
-                placeholder="BUSCAR JUGADOR/A..."
-                className="w-full bg-slate-50 border border-slate-200 p-5 pl-14 rounded-[28px] text-sm font-bold text-slate-900 outline-none focus:border-proneo-green transition-all shadow-sm"
+                placeholder={isScoutingView ? "BUSCAR OBJETIVO..." : "BUSCAR JUGADOR/A..."}
+                className={`w-full border p-5 pl-14 rounded-[28px] text-sm font-bold text-slate-900 outline-none transition-all shadow-sm ${isScoutingView ? 'bg-blue-50 border-blue-100 focus:border-blue-500 placeholder:text-blue-300' : 'bg-slate-50 border-slate-200 focus:border-proneo-green'}`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+            </div>
+
+            {/* TOGGLE SELECTOR */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl">
+              <button
+                onClick={() => setIsScoutingView(false)}
+                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isScoutingView ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Cantera
+              </button>
+              <button
+                onClick={() => setIsScoutingView(true)}
+                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isScoutingView ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Scouting
+              </button>
             </div>
 
             <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
@@ -277,7 +297,7 @@ function App() {
                 <button
                   key={sport.id}
                   onClick={() => setSportFilter(sport.id as any)}
-                  className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${sportFilter === sport.id ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                  className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${sportFilter === sport.id ? (isScoutingView ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg') : (isScoutingView ? 'bg-blue-50 text-blue-400 border border-blue-100' : 'bg-slate-50 text-slate-400 border border-slate-100')}`}
                 >
                   {sport.label}
                 </button>
@@ -286,7 +306,7 @@ function App() {
 
             <div className="space-y-4">
               {players
-                .filter(p => !p.isScouting)
+                .filter(p => isScoutingView ? p.isScouting : !p.isScouting)
                 .filter(p => sportFilter === 'all' || p.category === sportFilter)
                 .filter(p =>
                   p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -296,78 +316,20 @@ function App() {
                 .map(player => <PlayerCard key={player.id} player={player} onEdit={handleEditPlayer} />)
               }
               {players.filter(p =>
-                (!p.isScouting) &&
+                (isScoutingView ? p.isScouting : !p.isScouting) &&
                 (sportFilter === 'all' || p.category === sportFilter) &&
                 (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   p.club?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   p.position?.toLowerCase().includes(searchTerm.toLowerCase()))
               ).length === 0 && (
-                  <p className="text-center py-20 text-slate-300 text-xs font-bold uppercase tracking-widest">No hay registros que coincidan</p>
+                  <p className="text-center py-20 text-slate-300 text-xs font-bold uppercase tracking-widest">
+                    {isScoutingView ? 'No hay objetivos activos' : 'No hay registros'}
+                  </p>
                 )}
             </div>
           </div>
         )}
-        {activeTab === 'scouting' && (
-          <div className="p-6 space-y-6 animate-in fade-in duration-500 text-center">
-            <header className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-4xl font-extrabold tracking-tighter text-blue-600 uppercase">Scouting</h2>
-                <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mt-1">Objetivos de Mercado</p>
-              </div>
-            </header>
 
-            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300" />
-              <input
-                type="text"
-                placeholder="BUSCAR OBJETIVO..."
-                className="w-full bg-blue-50 border border-blue-100 p-5 pl-14 rounded-[28px] text-sm font-bold text-slate-900 outline-none focus:border-blue-500 transition-all shadow-sm placeholder:text-blue-300"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'Fútbol', label: 'Fútbol' },
-                { id: 'F. Sala', label: 'Sala' },
-                { id: 'Femenino', label: 'Femenino' },
-                { id: 'Entrenadores', label: 'Entrenadores' }
-              ].map(sport => (
-                <button
-                  key={sport.id}
-                  onClick={() => setSportFilter(sport.id as any)}
-                  className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${sportFilter === sport.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-50 text-blue-400 border border-blue-100'}`}
-                >
-                  {sport.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {players
-                .filter(p => p.isScouting)
-                .filter(p => sportFilter === 'all' || p.category === sportFilter)
-                .filter(p =>
-                  p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  p.club?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  p.position?.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map(player => <PlayerCard key={player.id} player={player} onEdit={handleEditPlayer} />)
-              }
-              {players.filter(p =>
-                (p.isScouting) &&
-                (sportFilter === 'all' || p.category === sportFilter) &&
-                (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  p.club?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  p.position?.toLowerCase().includes(searchTerm.toLowerCase()))
-              ).length === 0 && (
-                  <p className="text-center py-20 text-slate-300 text-xs font-bold uppercase tracking-widest">No hay objetivos activos</p>
-                )}
-            </div>
-          </div>
-        )}
         {activeTab === 'reports' && (
           <div className="p-6 space-y-6 animate-in fade-in duration-500 pb-20">
             <header className="mb-4">
@@ -520,18 +482,11 @@ function App() {
           className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'players' ? 'text-proneo-green scale-110' : 'text-slate-500 opacity-60'}`}
         >
           <Users className="w-7 h-7" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-center">Cantera</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-center">Base Datos</span>
           {activeTab === 'players' && <div className="w-1.5 h-1.5 bg-proneo-green rounded-full shadow-[0_0_8px_rgba(116,183,46,0.6)]" />}
         </button>
 
-        <button
-          onClick={() => setActiveTab('scouting')}
-          className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'scouting' ? 'text-blue-600 scale-110' : 'text-slate-500 opacity-60'}`}
-        >
-          <TargetIcon className="w-7 h-7" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-center">Scouting</span>
-          {activeTab === 'scouting' && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.6)]" />}
-        </button>
+
 
         <button
           onClick={() => setActiveTab('reports')}
