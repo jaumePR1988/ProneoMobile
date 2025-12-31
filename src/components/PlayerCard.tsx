@@ -1,4 +1,4 @@
-import { Edit2, MapPin } from 'lucide-react';
+import { Edit2, MapPin, Share2 } from 'lucide-react';
 import type { Player } from '../types/player';
 
 interface PlayerCardProps {
@@ -25,9 +25,21 @@ const PlayerCard = ({ player, onEdit }: PlayerCardProps) => (
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{player.category} • {player.position}</p>
         </div>
       </div>
-      <button className="p-3 bg-slate-50 rounded-2xl text-slate-300 group-hover:text-proneo-green transition-colors">
-        <Edit2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const text = `*PRONEO SPORTS* 📄\n\n*${player.name.toUpperCase()}*\n${player.position} (${player.age || '?'} Años)\n\n📍 ${player.club || 'Sin Equipo'}\n🏁 Fin Contrato: ${player.contract?.endDate || 'Consultar'}\n\n🔗 Más info: https://proneosports.com`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+          }}
+          className="p-3 bg-slate-50 rounded-2xl text-slate-300 hover:text-green-500 transition-colors"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
+        <button className="p-3 bg-slate-50 rounded-2xl text-slate-300 group-hover:text-proneo-green transition-colors">
+          <Edit2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <div className="flex items-center justify-between pt-4 border-t border-slate-50">
