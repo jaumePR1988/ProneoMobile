@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import {
-    X, Save, User, Trophy, Building2, Briefcase, Plus, Trash, Camera, Check, ChevronDown, Search, Target
+    X, Save, User, Trophy, Building2, Briefcase, Plus, Trash, Camera, Check, ChevronDown, Search, Target, FileText, ExternalLink, UploadCloud
 } from 'lucide-react';
 import { db, storage } from '../firebase/config';
 import { doc, updateDoc, addDoc, collection, onSnapshot } from 'firebase/firestore';
@@ -48,7 +48,7 @@ const Input = memo((props: React.InputHTMLAttributes<HTMLInputElement | HTMLSele
 
 const PlayerForm: React.FC<PlayerFormProps> = ({ initialData, isScoutingInit, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
-    const [activeSection, setActiveSection] = useState<'personal' | 'sports' | 'contract' | 'agency' | 'finance' | 'scouting' | 'custom'>('personal');
+    const [activeSection, setActiveSection] = useState<'personal' | 'sports' | 'contract' | 'agency' | 'finance' | 'scouting' | 'documents' | 'custom'>('personal');
     const [systemLists, setSystemLists] = useState<any>(null);
     const [schema, setSchema] = useState<DynamicField[]>([]);
 
@@ -131,6 +131,35 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ initialData, isScoutingInit, on
         }
     };
 
+    const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoading(true);
+        try {
+            // Subir archivo
+            const storageRef = ref(storage, `players_docs/${crypto.randomUUID()}_${file.name}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+
+            // Crear objeto documento
+            const newDoc = {
+                id: crypto.randomUUID(),
+                name: file.name,
+                url: url
+            };
+
+            // Actualizar estado del formulario
+            const currentDocs = formData.documents || [];
+            handleChange('documents', [...currentDocs, newDoc]);
+
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("Error al subir el documento");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!formData.firstName || !formData.lastName1) {
             alert("Nombre y Apellido son obligatorios");
@@ -185,6 +214,7 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ initialData, isScoutingInit, on
                     <SectionHeader id="agency" activeSection={activeSection} onClick={setActiveSection} label="Agencia" icon={Briefcase} />
                     {(formData.isScouting || activeSection === 'scouting') && <SectionHeader id="scouting" activeSection={activeSection} onClick={setActiveSection} label="Scouting" icon={Search} />}
                     {!formData.isScouting && <SectionHeader id="finance" activeSection={activeSection} onClick={setActiveSection} label="Economía" icon={Plus} />}
+                    <SectionHeader id="documents" activeSection={activeSection} onClick={setActiveSection} label="Docs" icon={FileText} />
                     {schema.length > 0 && <SectionHeader id="custom" activeSection={activeSection} onClick={setActiveSection} label="Extra" icon={Check} />}
                 </div>
 
@@ -587,6 +617,67 @@ const PlayerForm: React.FC<PlayerFormProps> = ({ initialData, isScoutingInit, on
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {activeSection === 'documents' && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 mb-6 text-center">
+                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
+                                    <FileText className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-sm font-black uppercase text-slate-900">Documentación</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestión de archivos y contratos</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                {formData.documents && formData.documents.length > 0 ? (
+                                    formData.documents.map((doc: any, index: number) => (
+                                        <div key={doc.id || index} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm group">
+                                            <div className="flex items-center gap-4 overflow-hidden">
+                                                <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                    <FileText className="w-5 h-5" />
+                                                </div>
+                                                <div className="truncate">
+                                                    <p className="text-xs font-bold text-slate-900 truncate">{doc.name}</p>
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">PDF / IMG</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={doc.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-blue-600 transition-colors"
+                                                >
+                                                    <ExternalLink className="w-4 h-4" />
+                                                </a>
+                                                <button
+                                                    onClick={() => {
+                                                        const newDocs = formData.documents?.filter((_, i) => i !== index);
+                                                        handleChange('documents', newDocs);
+                                                    }}
+                                                    className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 opacity-50">
+                                        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Sin documentos adjuntos</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <label className="block w-full">
+                                <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleDocumentUpload} />
+                                <div className="w-full h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs active:scale-95 transition-all cursor-pointer shadow-xl">
+                                    <UploadCloud className="w-5 h-5" />
+                                    Subir Nuevo Documento
+                                </div>
+                            </label>
                         </div>
                     )}
 
