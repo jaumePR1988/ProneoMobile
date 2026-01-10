@@ -21,20 +21,54 @@ const calculateAge = (birthDate: string) => {
 };
 
 const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSport = "all" }: DossierPreviewProps) => {
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0 = Jan, 8 = Sept
+    const currentYearVal = today.getFullYear();
+
+    // Logic: Before Sept (Jan-Aug), we are in season ending in CurrentYear (e.g. Jan 2026 -> Season 25/26 -> Ends 2026)
+    // From Sept onwards, we are in season ending in NextYear (e.g. Sept 2026 -> Season 26/27 -> Ends 2027)
+    const isNewSeason = currentMonth >= 8;
+    const targetYear = isNewSeason ? currentYearVal + 1 : currentYearVal;
+
+    // Display Season: e.g. "2025/2026"
+    const seasonStart = targetYear - 1;
+    const seasonEnd = targetYear;
+    const seasonString = `${seasonStart}/${seasonEnd}`;
+
     const scoutingPlayers = useMemo(() => {
+        console.log('DEBUG: Season Logic:', { month: currentMonth, isNewSeason, targetYear, seasonString });
         return players.filter(p => {
             const isScouting = p.isScouting;
             const matchesSport = filterSport === "all" || p.category === filterSport;
 
             if (title === 'Dossier Oportunidades Mercado' || title === 'Oportunidades Mercado') {
-                const contractEnd = p.scouting?.contractEnd || '';
-                const isExpiring = contractEnd.includes('2025') || contractEnd.includes('2026');
-                return isScouting && matchesSport && isExpiring;
+                // Market Opportunities = Cantera players (not scouting)
+                const isCantera = !p.isScouting;
+                const contractEnd = p.contract?.endDate || '';
+
+                // Filter for the target ending year (e.g. "2026" or "26")
+                // Also allowing for explicit season string match "2025/2026" just in case
+                const searchTerms = [
+                    targetYear.toString(),          // "2026"
+                    targetYear.toString().slice(2), // "26"
+                    seasonString                    // "2025/2026"
+                ];
+
+                const isExpiring = searchTerms.some(term => {
+                    // Avoid matching "2026" inside "2026" digit if slightly different (basic check ok for years)
+                    // For short year "26", strict check (space, slash or end of string)
+                    if (term.length === 2) {
+                        return contractEnd.includes('/' + term) || contractEnd.includes(' ' + term) || contractEnd.endsWith(term);
+                    }
+                    return contractEnd.includes(term);
+                });
+
+                return isCantera && matchesSport && isExpiring;
             }
 
             return isScouting && matchesSport;
         });
-    }, [players, title, filterSport]);
+    }, [players, title, filterSport, targetYear, seasonString]);
 
     const isMarketReport = title.includes('Oportunidades');
 
@@ -79,7 +113,7 @@ const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSp
                                 )}
                             </h1>
                             <div className="flex items-center gap-3 text-[10px] font-bold tracking-[0.2em] uppercase opacity-70">
-                                <span>{isMarketReport ? 'FIN DE CONTRATO 2025/2026' : 'TALENTO & SEGUIMIENTO 2025/2026'}</span>
+                                <span>{isMarketReport ? `FIN DE CONTRATO ${seasonString}` : `TALENTO & SEGUIMIENTO ${seasonString}`}</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
                                 <span className={isMarketReport ? 'text-emerald-400' : 'text-blue-400'}>{filterSport === 'all' ? 'TODOS' : filterSport}</span>
                             </div>
@@ -130,7 +164,7 @@ const DossierPreview = ({ players, onClose, title = "Dossier Scouting", filterSp
                                             {isMarketReport ? (
                                                 <div className="flex items-center gap-2 text-emerald-600 col-span-2 mt-2 pt-3 border-t border-slate-50">
                                                     <Calendar className="w-4 h-4" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">LIBRE EN LA TEMPORADA • {player.scouting?.contractEnd || '2026'}</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">LIBRE EN LA TEMPORADA • {player.scouting?.contractEnd || targetYear}</span>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 col-span-2 mt-2 pt-3 border-t border-slate-50">

@@ -24,8 +24,10 @@ import {
   Trophy,
   Target as TargetIcon,
   User,
-  Bell
+  Bell,
+  Shield
 } from 'lucide-react';
+import UsersModule from './components/UsersModule';
 import PlayerForm from './components/PlayerForm';
 import type { Player } from './types/player';
 import ProfileModule from './components/ProfileModule';
@@ -44,7 +46,7 @@ import DossierPreview from './components/DossierPreview';
 function App() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'players' | 'reports' | 'notifications' | 'profile' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'players' | 'reports' | 'notifications' | 'profile' | 'settings' | 'users'>('home');
   const [players, setPlayers] = useState<Player[]>([]);
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -91,7 +93,9 @@ function App() {
         if (firebaseUser) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.email?.toLowerCase() || ''));
           if (userDoc.exists()) {
-            setUser({ ...firebaseUser, role: userDoc.data().role });
+            const userData = userDoc.data();
+            // Map 'sport' from DB to 'category' in state
+            setUser({ ...firebaseUser, role: userData.role, category: userData.sport });
           } else {
             setUser(null);
           }
@@ -109,10 +113,36 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (user && user.category && !['admin', 'director', 'global'].includes(user.role)) {
+      setSportFilter(user.category);
+      setReportSportFilter(user.category);
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'players'), limit(200));
+    const q = query(collection(db, 'players'), limit(500));
     return onSnapshot(q, (snapshot) => {
-      setPlayers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player)));
+      const mappedPlayers = snapshot.docs.map(doc => {
+        const data = doc.data();
+
+        // Ensure name exists
+        const name = data.name || `${data.firstName || ''} ${data.lastName1 || ''}`.trim();
+
+        // Ensure scouting contract end date exists (fallback to main contract)
+        let scouting = data.scouting || {};
+        if (!scouting.contractEnd && data.contract?.endDate) {
+          scouting = { ...scouting, contractEnd: data.contract.endDate };
+        }
+
+        return {
+          id: doc.id,
+          ...data,
+          name,
+          scouting
+        } as Player;
+      });
+      setPlayers(mappedPlayers);
     });
   }, [user]);
 
@@ -232,8 +262,14 @@ function App() {
         {activeTab === 'home' && (
           <Dashboard
             stats={{
-              canteraCount: players.filter(p => !p.isScouting).length,
-              scoutingCount: players.filter(p => p.isScouting).length
+              canteraCount: players
+                .filter(p => !p.isScouting)
+                .filter(p => (!user?.category || ['admin', 'director', 'global'].includes(user?.role)) ? true : p.category === user.category)
+                .length,
+              scoutingCount: players
+                .filter(p => p.isScouting)
+                .filter(p => (!user?.category || ['admin', 'director', 'global'].includes(user?.role)) ? true : p.category === user.category)
+                .length
             }}
             campaign={appBranding.campaign}
             onAddPlayer={() => {
@@ -286,23 +322,25 @@ function App() {
               </button>
             </div>
 
-            <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'Fútbol', label: 'Fútbol' },
-                { id: 'F. Sala', label: 'Sala' },
-                { id: 'Femenino', label: 'Femenino' },
-                { id: 'Entrenadores', label: 'Entrenadores' }
-              ].map(sport => (
-                <button
-                  key={sport.id}
-                  onClick={() => setSportFilter(sport.id as any)}
-                  className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${sportFilter === sport.id ? (isScoutingView ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg') : (isScoutingView ? 'bg-blue-50 text-blue-400 border border-blue-100' : 'bg-slate-50 text-slate-400 border border-slate-100')}`}
-                >
-                  {sport.label}
-                </button>
-              ))}
-            </div>
+            {(!user?.category || ['admin', 'director', 'global'].includes(user?.role)) && (
+              <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'Fútbol', label: 'Fútbol' },
+                  { id: 'F. Sala', label: 'Sala' },
+                  { id: 'Femenino', label: 'Femenino' },
+                  { id: 'Entrenadores', label: 'Entrenadores' }
+                ].map(sport => (
+                  <button
+                    key={sport.id}
+                    onClick={() => setSportFilter(sport.id as any)}
+                    className={`px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${sportFilter === sport.id ? (isScoutingView ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-lg') : (isScoutingView ? 'bg-blue-50 text-blue-400 border border-blue-100' : 'bg-slate-50 text-slate-400 border border-slate-100')}`}
+                  >
+                    {sport.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-4">
               {players
@@ -334,23 +372,25 @@ function App() {
           <div className="p-6 space-y-6 animate-in fade-in duration-500 pb-20">
             <header className="mb-4">
               <h2 className="text-4xl font-extrabold tracking-tighter text-slate-900 uppercase">Reportes</h2>
-              <div className="flex gap-2 mt-6 overflow-x-auto scrollbar-hide">
-                {[
-                  { id: 'all', label: 'Todos' },
-                  { id: 'Fútbol', label: 'Fútbol' },
-                  { id: 'F. Sala', label: 'Sala' },
-                  { id: 'Femenino', label: 'Femenino' },
-                  { id: 'Entrenadores', label: 'Entrenadores' }
-                ].map(sport => (
-                  <button
-                    key={sport.id}
-                    onClick={() => setReportSportFilter(sport.id as any)}
-                    className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${reportSportFilter === sport.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
-                  >
-                    {sport.label}
-                  </button>
-                ))}
-              </div>
+              {(!user?.category || ['admin', 'director', 'global'].includes(user?.role)) && (
+                <div className="flex gap-2 mt-6 overflow-x-auto scrollbar-hide">
+                  {[
+                    { id: 'all', label: 'Todos' },
+                    { id: 'Fútbol', label: 'Fútbol' },
+                    { id: 'F. Sala', label: 'Sala' },
+                    { id: 'Femenino', label: 'Femenino' },
+                    { id: 'Entrenadores', label: 'Entrenadores' }
+                  ].map(sport => (
+                    <button
+                      key={sport.id}
+                      onClick={() => setReportSportFilter(sport.id as any)}
+                      className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${reportSportFilter === sport.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                    >
+                      {sport.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </header>
 
             <div className="grid gap-4">
@@ -396,7 +436,7 @@ function App() {
             </div>
           </div>
         )}
-        {activeTab === 'notifications' && <AvisosModule players={players} userRole={user?.role || 'scout'} />}
+        {activeTab === 'notifications' && <AvisosModule players={players} userRole={user?.role || 'scout'} userCategory={user?.category} />}
         {activeTab === 'profile' && (
           <div className="space-y-6">
             <ProfileModule
@@ -442,6 +482,7 @@ function App() {
             </div>
           </div>
         )}
+        {activeTab === 'users' && <UsersModule />}
         {activeTab === 'settings' && <SystemSettings />}
       </main>
 
@@ -527,8 +568,20 @@ function App() {
           <Settings className="w-7 h-7" />
           {activeTab === 'settings' && <div className="w-1.5 h-1.5 bg-slate-400 rounded-full" />}
         </button>
+
+        {/* ADMIN USERS TAB */}
+        {['admin', 'director', 'global'].includes(user?.role) && (
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'users' ? 'text-indigo-600 scale-110' : 'text-slate-500 opacity-60'}`}
+          >
+            <Shield className="w-7 h-7" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-center">Usuarios</span>
+            {activeTab === 'users' && <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full shadow-[0_0_8px_rgba(79,70,229,0.6)]" />}
+          </button>
+        )}
       </nav>
-    </div>
+    </div >
   );
 }
 

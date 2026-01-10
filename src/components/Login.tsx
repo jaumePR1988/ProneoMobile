@@ -17,7 +17,7 @@ const Login = ({ onLoginSuccess }: { onLoginSuccess: (user: any) => void }) => {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const userDoc = await getDoc(doc(db, 'users', email.toLowerCase()));
             if (userDoc.exists()) {
-                const userData = { ...userCredential.user, role: userDoc.data().role };
+                const userData = { ...userCredential.user, role: userDoc.data().role, category: userDoc.data().sport };
 
                 if (analytics) {
                     logEvent(analytics, 'login', {

@@ -18,9 +18,10 @@ import type { Player } from '../types/player';
 interface AvisosModuleProps {
     players: Player[];
     userRole: string;
+    userCategory?: string;
 }
 
-const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
+const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole, userCategory }) => {
     const [pendingUsers, setPendingUsers] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
     const [showSettings, setShowSettings] = useState(false);
@@ -43,6 +44,12 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
     });
 
     useEffect(() => {
+        if (userCategory && !['admin', 'director', 'global'].includes(userRole)) {
+            setSelectedCategory(userCategory);
+        }
+    }, [userCategory, userRole]);
+
+    useEffect(() => {
         localStorage.setItem('proneo_alert_settings_mobile', JSON.stringify(alertSettings));
     }, [alertSettings]);
 
@@ -61,6 +68,8 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
         });
         return () => unsubscribe();
     }, []);
+
+    // ... (handlers remain unchanged)
 
     const handleComplete = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -276,17 +285,19 @@ const AvisosModule: React.FC<AvisosModuleProps> = ({ players, userRole }) => {
                 </div>
             )}
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {['Todos', 'Fútbol', 'F. Sala', 'Femenino', 'Entrenadores'].map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
-                    >
-                        {cat}
-                    </button>
-                ))}
-            </div>
+            {(!userCategory || ['admin', 'director', 'global'].includes(userRole)) && (
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {['Todos', 'Fútbol', 'F. Sala', 'Femenino', 'Entrenadores'].map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="space-y-4">
                 {alerts.length === 0 ? (
