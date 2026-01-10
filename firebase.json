@@ -13,12 +13,11 @@
                 "destination": "/index.html"
             }
         ]
+    },
+    "firestore": {
+        "rules": "firestore.rules"
+    },
+    "storage": {
+        "rules": "storage.rules"
     }
-},
-"firestore": {
-    "rules": "firestore.rules"
-},
-"storage": {
-    "rules": "storage.rules"
-}
 }
