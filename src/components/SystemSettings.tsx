@@ -8,6 +8,7 @@ const SystemSettings = () => {
     const [newItem, setNewItem] = useState('');
     const [activeCategory, setActiveCategory] = useState<'clubs' | 'leagues' | 'agents' | 'positions' | 'brands' | 'selections' | 'feet'>('clubs');
     const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     useEffect(() => {
         return onSnapshot(doc(db, 'settings', 'system_lists'), async (snapshot) => {
@@ -33,16 +34,22 @@ const SystemSettings = () => {
     }, []);
 
     const handleAddItem = async () => {
-        if (!newItem.trim() || !lists) return;
+        if (!newItem.trim()) return;
+        if (!lists) return;
+
         setLoading(true);
+        setMessage(null);
         try {
             const updatedList = [...(lists[activeCategory] || []), newItem.trim()].sort();
             await updateDoc(doc(db, 'settings', 'system_lists'), {
                 [activeCategory]: updatedList
             });
             setNewItem('');
-        } catch (e) {
+            setMessage({ type: 'success', text: 'Añadido correctamente' });
+            setTimeout(() => setMessage(null), 3000);
+        } catch (e: any) {
             console.error(e);
+            setMessage({ type: 'error', text: 'Error: ' + e.message });
         } finally {
             setLoading(false);
         }
@@ -104,6 +111,12 @@ const SystemSettings = () => {
                     <Plus className="w-6 h-6" />
                 </button>
             </div>
+
+            {message && (
+                <div className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest ${message.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'} animate-in fade-in slide-in-from-top-2`}>
+                    {message.text}
+                </div>
+            )}
 
             <div className="space-y-2 pb-20">
                 {(lists[activeCategory] || []).map((item: string) => (

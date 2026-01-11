@@ -19,7 +19,6 @@ import {
   Search,
   LayoutDashboard,
   LogOut,
-  Settings,
   ClipboardList,
   Trophy,
   Target as TargetIcon,
@@ -30,12 +29,11 @@ import {
 import UsersModule from './components/UsersModule';
 import PlayerForm from './components/PlayerForm';
 import type { Player } from './types/player';
-import ProfileModule from './components/ProfileModule';
 import AvisosModule from './components/AvisosModule';
+import AccountModule from './components/AccountModule';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PlayerCard from './components/PlayerCard';
-import SystemSettings from './components/SystemSettings';
 import DossierPreview from './components/DossierPreview';
 
 // --- COMPONENTES UI CORPORATIVOS v1.4.0 ---
@@ -437,53 +435,14 @@ function App() {
           </div>
         )}
         {activeTab === 'notifications' && <AvisosModule players={players} userRole={user?.role || 'scout'} userCategory={user?.category} />}
-        {activeTab === 'profile' && (
-          <div className="space-y-6">
-            <ProfileModule
-              user={{
-                email: user.email,
-                displayName: user.displayName || user.email?.split('@')[0],
-                photoURL: user.photoURL,
-                role: user.role
-              }}
-            />
-            <div className="px-6 pb-32 space-y-4">
-              <button
-                onClick={handleTestPush}
-                className="w-full bg-blue-50 text-blue-600 p-6 rounded-[32px] border border-blue-100 flex items-center justify-center gap-3 font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
-              >
-                <Bell className="w-5 h-5" />
-                Probar Notificaciones
-              </button>
-
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Información Sistema</p>
-                  <p className="text-sm font-bold text-slate-600 tracking-tight">Versión {APP_VERSION}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm('¿Quieres reiniciar la aplicación para aplicar actualizaciones?')) {
-                      window.location.reload();
-                    }
-                  }}
-                  className="bg-slate-50 text-slate-400 p-4 rounded-2xl hover:bg-slate-100 transition-all font-bold text-[10px] uppercase tracking-widest"
-                >
-                  Reiniciar
-                </button>
-              </div>
-              <button
-                onClick={() => auth.signOut()}
-                className="w-full bg-red-50 text-red-500 p-6 rounded-[32px] flex items-center justify-center gap-3 font-black uppercase tracking-widest active:scale-95 transition-all"
-              >
-                <LogOut className="w-5 h-5" />
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        )}
         {activeTab === 'users' && <UsersModule />}
-        {activeTab === 'settings' && <SystemSettings />}
+        {activeTab === 'settings' && (
+          <AccountModule
+            user={user}
+            appVersion={APP_VERSION}
+            onTestPush={handleTestPush}
+          />
+        )}
       </main>
 
       {showPlayerForm && (
@@ -552,23 +511,6 @@ function App() {
           {activeTab === 'notifications' && <div className="w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" />}
         </button>
 
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'profile' ? 'text-proneo-green scale-110' : 'text-slate-500 opacity-60'}`}
-        >
-          <User className="w-7 h-7" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-center">Perfil</span>
-          {activeTab === 'profile' && <div className="w-1.5 h-1.5 bg-proneo-green rounded-full shadow-[0_0_8px_rgba(116,183,46,0.6)]" />}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-500 scale-110' : 'text-slate-300 opacity-40'}`}
-        >
-          <Settings className="w-7 h-7" />
-          {activeTab === 'settings' && <div className="w-1.5 h-1.5 bg-slate-400 rounded-full" />}
-        </button>
-
         {/* ADMIN USERS TAB */}
         {['admin', 'director', 'global'].includes(user?.role) && (
           <button
@@ -580,6 +522,15 @@ function App() {
             {activeTab === 'users' && <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full shadow-[0_0_8px_rgba(79,70,229,0.6)]" />}
           </button>
         )}
+
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex flex-col items-center gap-2 transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-500 opacity-60'}`}
+        >
+          <User className="w-7 h-7" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-center">Cuenta</span>
+          {activeTab === 'settings' && <div className="w-1.5 h-1.5 bg-slate-900 rounded-full shadow-[0_0_8px_rgba(15,23,42,0.6)]" />}
+        </button>
       </nav>
     </div >
   );
