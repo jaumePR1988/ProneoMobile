@@ -35,6 +35,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PlayerCard from './components/PlayerCard';
 import DossierPreview from './components/DossierPreview';
+import MatchReportForm from './components/MatchReportForm';
 
 // --- COMPONENTES UI CORPORATIVOS v1.4.0 ---
 
@@ -47,6 +48,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'players' | 'reports' | 'notifications' | 'profile' | 'settings' | 'users'>('home');
   const [players, setPlayers] = useState<Player[]>([]);
   const [showPlayerForm, setShowPlayerForm] = useState(false);
+  const [showMatchReport, setShowMatchReport] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isScoutingView, setIsScoutingView] = useState(false); // Toggle state: false = Cantera, true = Scouting
@@ -291,6 +293,15 @@ function App() {
                   {isScoutingView ? 'Objetivos de Mercado' : 'Jugadores Representados'}
                 </p>
               </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowMatchReport(true)}
+                  className="bg-[#74b72e] text-white px-4 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  + Informe
+                </button>
+              </div>
             </header>
 
             <div className="relative group">
@@ -464,6 +475,15 @@ function App() {
           title={dossierTitle}
           filterSport={reportSportFilter}
           onClose={() => setShowDossier(false)}
+        />
+      )}
+
+      {showMatchReport && (
+        <MatchReportForm
+          players={players}
+          isScouting={isScoutingView}
+          user={user}
+          onClose={() => setShowMatchReport(false)}
         />
       )}
 
