@@ -97,6 +97,7 @@ export interface Player {
     customFields: Record<string, any>;
     photoUrl?: string;
     documents: { id: string; name: string; url: string }[];
+    achievements?: string; // Palmarés y Logros
     createdAt: number;
     updatedAt: number;
 }

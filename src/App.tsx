@@ -36,6 +36,7 @@ import Dashboard from './components/Dashboard';
 import PlayerCard from './components/PlayerCard';
 import DossierPreview from './components/DossierPreview';
 import MatchReportForm from './components/MatchReportForm';
+import Player360Modal from './components/Player360Modal';
 
 // --- COMPONENTES UI CORPORATIVOS v1.4.0 ---
 
@@ -49,6 +50,8 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [showPlayerForm, setShowPlayerForm] = useState(false);
   const [showMatchReport, setShowMatchReport] = useState(false);
+  const [showPlayer360, setShowPlayer360] = useState(false);
+  const [selectedPlayer360, setSelectedPlayer360] = useState<Player | null>(null);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isScoutingView, setIsScoutingView] = useState(false); // Toggle state: false = Cantera, true = Scouting
@@ -360,7 +363,17 @@ function App() {
                   p.club?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   p.position?.toLowerCase().includes(searchTerm.toLowerCase())
                 )
-                .map(player => <PlayerCard key={player.id} player={player} onEdit={handleEditPlayer} />)
+                .map(player => (
+                  <PlayerCard
+                    key={player.id}
+                    player={player}
+                    onEdit={handleEditPlayer}
+                    onOpen360={() => {
+                      setSelectedPlayer360(player);
+                      setShowPlayer360(true);
+                    }}
+                  />
+                ))
               }
               {players.filter(p =>
                 (isScoutingView ? p.isScouting : !p.isScouting) &&
@@ -484,6 +497,21 @@ function App() {
           isScouting={isScoutingView}
           user={user}
           onClose={() => setShowMatchReport(false)}
+        />
+      )}
+
+      {showPlayer360 && selectedPlayer360 && (
+        <Player360Modal
+          player={selectedPlayer360}
+          onClose={() => setShowPlayer360(false)}
+          onUpdate={(updatedPlayer) => {
+            // Update local state if needed, though Firestore snapshot will eventually trigger
+            // But for immediate feedback:
+            const updatedList = players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p);
+            // Since players comes from onSnapshot, we rely on that mostly, but passing onUpdate helps internal modal state
+            // Actually, App.tsx relies on players state from snapshot.
+            // We can let the snapshot handle the real update.
+          }}
         />
       )}
 

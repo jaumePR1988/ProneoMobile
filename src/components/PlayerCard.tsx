@@ -4,14 +4,15 @@ import type { Player } from '../types/player';
 interface PlayerCardProps {
   player: Player;
   onEdit: (player: Player) => void;
+  onOpen360: (player: Player) => void;
 }
 
-const PlayerCard = ({ player, onEdit }: PlayerCardProps) => {
+const PlayerCard = ({ player, onEdit, onOpen360 }: PlayerCardProps) => {
   const displayName = player.name || `${player.firstName || ''} ${player.lastName1 || ''}`.trim() || 'Desconocido';
 
   return (
     <div
-      onClick={() => onEdit(player)}
+      onClick={() => onOpen360(player)}
       className={`p-6 rounded-[32px] border space-y-5 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group ${player.isScouting ? 'bg-[#f0f9ff] border-blue-400/50 shadow-md shadow-blue-200/50' : 'bg-white border-slate-100'}`}
     >
       <div className="flex items-center justify-between">
@@ -39,7 +40,13 @@ const PlayerCard = ({ player, onEdit }: PlayerCardProps) => {
           >
             <Share2 className="w-4 h-4" />
           </button>
-          <button className="p-3 bg-slate-50 rounded-2xl text-slate-300 group-hover:text-proneo-green transition-colors">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(player);
+            }}
+            className="p-3 bg-slate-50 rounded-2xl text-slate-300 group-hover:text-proneo-green transition-colors"
+          >
             <Edit2 className="w-4 h-4" />
           </button>
         </div>
